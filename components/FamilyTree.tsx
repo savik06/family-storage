@@ -2,29 +2,55 @@
 
 import { useUsers } from "@/app/customhooks";
 import '@xyflow/react/dist/style.css';
-import { Background, Controls, ReactFlow, Node, Edge, NodeProps, NodeTypes, Handle, Position } from '@xyflow/react';
-import { useEffect, useState } from "react";
+import { Background, Controls, ReactFlow, Node, Edge, Handle, Position } from '@xyflow/react';
+import { useEffect, useState, ComponentType } from "react";
 import { User } from "./types";
 import Image from "next/image";
 import clsx from "clsx";
 
-type RelativeData = { id: string; label: string; photo: string; onClick: (id: string) => void, isBorder: boolean; };
+type RelativeData = { 
+    id: string; 
+    label: string; 
+    photo: string; 
+    onClick: (id: string) => void, 
+    isBorder: boolean; 
+};
 
-const RelativeCard = ({ id, data }: NodeProps<RelativeData>) => {
+type NodeTypes = {
+    [x: string]: ComponentType<Pick<Node<Record<string, unknown>, string | undefined>, "id" | "data" | "width" | "height" | "sourcePosition" | "targetPosition" | "dragHandle" | "parentId"> & Required<Pick<Node<Record<string, unknown>, string | undefined>, "type" | "dragging" | "zIndex" | "selectable" | "deletable" | "selected" | "draggable">> & {
+        isConnectable: boolean;
+        positionAbsoluteX: number;
+        positionAbsoluteY: number;
+    } & {
+        data: any;
+        type: any;
+    }>;
+};
+
+const RelativeCard = (props: Pick<Node<Record<string, unknown>, string | undefined>, "id" | "data" | "width" | "height" | "sourcePosition" | "targetPosition" | "dragHandle" | "parentId"> & Required<Pick<Node<Record<string, unknown>, string | undefined>, "type" | "dragging" | "zIndex" | "selectable" | "deletable" | "selected" | "draggable">> & {
+    isConnectable: boolean;
+    positionAbsoluteX: number;
+    positionAbsoluteY: number;
+} & {
+    data: RelativeData;
+    type: any;
+}) => {
+    const { data } = props;
+    const { id, label, photo, onClick, isBorder } = data;
 
     const [ isChosen, setIsChosen ] = useState(false);
 
     return (
-        <div className={clsx("custom-node cursor-pointer", isChosen && "border-4 border-black")} onClick={() => {data.onClick(id); data.isBorder && setIsChosen(prev => !prev)}}>
+        <div className={clsx("custom-node cursor-pointer", isChosen && "border-4 border-black")} onClick={() => {onClick(id); isBorder && setIsChosen(prev => !prev)}}>
             <div className="p-1 shadow-sm shadow-gray-900">
                 <Image
-                    src={data.photo}
-                    alt={data.label}
+                    src={photo}
+                    alt={label}
                     width={300}
                     height={300}
                     className="w-24 h-24"
                 />
-                <p>{data.label}</p>
+                <p>{label}</p>
             </div>
             <Handle type="source" position={Position.Bottom} />
             <Handle type="target" position={Position.Top} />
@@ -33,7 +59,7 @@ const RelativeCard = ({ id, data }: NodeProps<RelativeData>) => {
     )
 };
 
-const nodeTypes = { relativeCard: RelativeCard };
+const nodeTypes: NodeTypes = { relativeCard: RelativeCard };
 
 export default function FamilyTree({ onNodeClick, isBorder = false }: { onNodeClick: (id: string) => void, isBorder?: boolean }) {
     const { users } = useUsers();

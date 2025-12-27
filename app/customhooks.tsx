@@ -54,7 +54,8 @@ export const useUsers = () => {
     );
     return {
         users: data,
-        isLoading
+        isLoading,
+        mutate
     }
 }
 

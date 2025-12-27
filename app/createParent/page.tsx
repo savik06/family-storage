@@ -16,7 +16,7 @@ type FormState = {
 };
 
 export default function CreateParentPage() {
-  const { users } = useUsers();
+  const { users, mutate } = useUsers();
   const [formData, setFormData] = useState<FormState>({
     name: "",
     surname: "",
@@ -52,6 +52,7 @@ export default function CreateParentPage() {
       }
 
       toast.success("Родственник успешно добавлен");
+      await mutate();
       setFormData({
         name: "",
         surname: "",
@@ -105,7 +106,7 @@ export default function CreateParentPage() {
           label="Дата рождения"
           value={formData.birthDate}
           onChange={handleChange("birthDate")}
-          placeholder="YYYY-MM-DD"
+          placeholder="DD.MM.YYYY"
           required
         />
 
