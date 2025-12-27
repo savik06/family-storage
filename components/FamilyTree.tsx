@@ -2,7 +2,7 @@
 
 import { useUsers } from "@/app/customhooks";
 import '@xyflow/react/dist/style.css';
-import { Background, Controls, ReactFlow, Node, Edge, Handle, Position } from '@xyflow/react';
+import { Background, Controls, ReactFlow, Node, Edge, Handle, Position, NodeTypes, NodeProps } from '@xyflow/react';
 import { useEffect, useState, ComponentType } from "react";
 import { User } from "./types";
 import Image from "next/image";
@@ -16,27 +16,10 @@ type RelativeData = {
     isBorder: boolean; 
 };
 
-type NodeTypes = {
-    [x: string]: ComponentType<Pick<Node<Record<string, unknown>, string | undefined>, "id" | "data" | "width" | "height" | "sourcePosition" | "targetPosition" | "dragHandle" | "parentId"> & Required<Pick<Node<Record<string, unknown>, string | undefined>, "type" | "dragging" | "zIndex" | "selectable" | "deletable" | "selected" | "draggable">> & {
-        isConnectable: boolean;
-        positionAbsoluteX: number;
-        positionAbsoluteY: number;
-    } & {
-        data: any;
-        type: any;
-    }>;
-};
 
-const RelativeCard = (props: Pick<Node<Record<string, unknown>, string | undefined>, "id" | "data" | "width" | "height" | "sourcePosition" | "targetPosition" | "dragHandle" | "parentId"> & Required<Pick<Node<Record<string, unknown>, string | undefined>, "type" | "dragging" | "zIndex" | "selectable" | "deletable" | "selected" | "draggable">> & {
-    isConnectable: boolean;
-    positionAbsoluteX: number;
-    positionAbsoluteY: number;
-} & {
-    data: RelativeData;
-    type: any;
-}) => {
+const RelativeCard = (props: NodeProps) => {
     const { data } = props;
-    const { id, label, photo, onClick, isBorder } = data;
+    const { id, label, photo, onClick, isBorder } = data as RelativeData;
 
     const [ isChosen, setIsChosen ] = useState(false);
 
@@ -44,7 +27,7 @@ const RelativeCard = (props: Pick<Node<Record<string, unknown>, string | undefin
         <div className={clsx("custom-node cursor-pointer", isChosen && "border-4 border-black")} onClick={() => {onClick(id); isBorder && setIsChosen(prev => !prev)}}>
             <div className="p-1 shadow-sm shadow-gray-900">
                 <Image
-                    src={photo}
+                    src={photo || '/my-photo.jpg'}
                     alt={label}
                     width={300}
                     height={300}
