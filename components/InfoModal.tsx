@@ -1,4 +1,7 @@
+'use client';
+
 import { XIcon } from "lucide-react";
+import { useEffect, useState } from "react";
 
 type InfoModalProps = {
     isOpen: boolean;
@@ -7,15 +10,49 @@ type InfoModalProps = {
 }
 
 export default function InfoModal({ isOpen, close, children }: InfoModalProps) {
+    const [isAnimating, setIsAnimating] = useState(false);
+    const [shouldRender, setShouldRender] = useState(false);
+
+    useEffect(() => {
+        if (isOpen) {
+            setShouldRender(true);
+            // Небольшая задержка для запуска анимации появления
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    setIsAnimating(true);
+                });
+            });
+        } else {
+            // Запускаем анимацию исчезновения
+            setIsAnimating(false);
+            // Удаляем из DOM после завершения анимации
+            const timer = setTimeout(() => {
+                setShouldRender(false);
+            }, 300); // Длительность анимации
+            return () => clearTimeout(timer);
+        }
+    }, [isOpen]);
+
+    if (!shouldRender) return null;
 
     return (
         <>
-            {isOpen && <div className="h-[80vh] absolute bottom-0 w-screen z-30 bg-white border-t-2 border-black">
-                <div className="w-full flex flex-row justify-end">
-                    <XIcon className="size-8" onClick={close} />
+            <div 
+                className={`h-[75vh] absolute bottom-0 left-0 right-0 w-full z-30 border-t-2 border-border bg-card transition-transform duration-300 ease-out ${
+                    isAnimating ? 'translate-y-0' : 'translate-y-full'
+                }`}
+            >
+                <div className="w-full flex flex-row justify-end p-2">
+                    <button 
+                        onClick={close}
+                        className="p-2 hover:bg-muted transition-colors"
+                        aria-label="Закрыть"
+                    >
+                        <XIcon className="size-8" />
+                    </button>
                 </div>
                 {children}
-            </div>}
+            </div>
         </>
     )
 }

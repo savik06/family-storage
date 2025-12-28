@@ -5,6 +5,7 @@ import FamilyTree from "./FamilyTree";
 import UserInfo from "./UserInfo";
 import { XIcon } from "lucide-react";
 import InfoModal from "./InfoModal";
+import Navbar from "./Navbar";
 
 export default function TreeWithProfile() {
     const [ isProfileOpen, setIsProfileOpen ] = useState(false);
@@ -19,9 +20,9 @@ export default function TreeWithProfile() {
         <div className="relative">
             <FamilyTree onNodeClick={handleClick} />
             <InfoModal isOpen={isProfileOpen} close={() => setIsProfileOpen(prev => !prev)}>
-                <UserInfo id={userId} />
+                <UserInfo id={userId} isChange={false} />
             </InfoModal>
-                
+            {!isProfileOpen && <Navbar />}
         </div>
 
     )

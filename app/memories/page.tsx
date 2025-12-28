@@ -6,6 +6,7 @@ import { User } from "@/components/types";
 import { useState, useEffect } from "react";
 import { MemoriesInfo } from "@/components/Memory";
 import InfoModal from "@/components/InfoModal";
+import Navbar from "@/components/Navbar";
 
 type ChosenRelative = {
     relative: User;
@@ -37,13 +38,26 @@ export default function Memories() {
     }
 
     return (
-        <div className="w-full h-full relative flex flex-col items-center">
-            <h1>Выбери родственников</h1>
+        <div className="relative page-container">
+            <div className="content-max-width mb-8">
+                <h1 className="mb-3">Выбери родственников</h1>
+                <p className="text-description mb-6">
+                    Нажмите на карточки родственников, чтобы выбрать их и посмотреть общие воспоминания
+                </p>
+            </div>
             <FamilyTree onNodeClick={handleClick} isBorder={true} />
             <InfoModal isOpen={isMemoriesOpen} close={() => setIsMemoriesOpen(prev => !prev)}>
                 <MemoriesInfo users={chosenRelatives?.reduce((a: User[], r) => r.isChosen ? [...a, r.relative]: a, [])} allMemories={memories}/>
             </InfoModal> 
-            {chosenAmount > 0 && <button onClick={() => setIsMemoriesOpen(prev => !prev)} className="absolute bottom-5 border-2 border-black">Показать</button>}
+            {chosenAmount > 0 && !isMemoriesOpen && (
+                <button 
+                    onClick={() => setIsMemoriesOpen(prev => !prev)} 
+                    className="btn-primary fixed left-1/2 -translate-x-1/2 bottom-32 sm:bottom-3 z-40"
+                >
+                    Показать воспоминания
+                </button>
+            )}
+            {!isMemoriesOpen && <Navbar />}
         </div>
     )
 

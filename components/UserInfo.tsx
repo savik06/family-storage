@@ -3,9 +3,10 @@
 import { useUser } from "@/app/customhooks";
 import Image from "next/image";
 import { Memory, User } from "./types";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { toast } from "sonner";
 import Link from "next/link";
+import useEmblaCarousel from 'embla-carousel-react';
 
 type EditableKey = "hobbies" | "specializations" | "achievements";
 
@@ -17,6 +18,7 @@ interface EditableListProps {
     mutate: () => Promise<any> | void;
     inputPlaceholder: string;
     successMessage: string;
+    isChange: boolean;
 }
 
 function EditableList({
@@ -27,6 +29,8 @@ function EditableList({
     mutate,
     inputPlaceholder,
     successMessage,
+    isChange
+
 }: EditableListProps) {
     const [isEditing, setIsEditing] = useState(false);
     const [editedItems, setEditedItems] = useState<string[]>(items);
@@ -47,8 +51,8 @@ function EditableList({
     const handleSave = async () => {
         const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
         try {
-            const response = await fetch(`${backendUrl}/user/updateData`, {
-                method: "POST",
+            const response = await fetch(`${backendUrl}/user/update`, {
+                method: "PATCH",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ id: userId, [fieldKey]: editedItems }),
             });
@@ -85,39 +89,43 @@ function EditableList({
     const handleDelete = (index: number) => {
         setEditedItems(editedItems.filter((_, i) => i !== index));
     };
-
-    // Показываем секцию, если есть элементы или активен режим редактирования
-    if (!isEditing && (!items || items.length === 0)) {
-        return null;
-    }
-
     return (
         <div className="w-full">
-            <div className="flex items-center gap-2 mb-2">
-                <div className="flex flex-row justify-between w-full">
-                    <div className="flex flex-row gap-2">
-                        <p>{title}:</p>
+            <div className="flex items-center gap-2 mb-4">
+                <div className="flex flex-row justify-between w-full items-center">
+                    <div className="flex flex-row gap-2 items-center">
+                        <h3>{title}</h3>
                         {isEditing && (
-                            <button onClick={handleAddClick} type="button">
+                            <button 
+                                onClick={handleAddClick} 
+                                type="button"
+                                className="btn-ghost text-lg font-bold w-8 h-8 p-0 flex items-center justify-center"
+                            >
                                 +
                             </button>
                         )}
                     </div>
-                    <button onClick={isEditing ? handleSave : () => setIsEditing(true)} type="button">
-                        {isEditing ? "Сохранить" : "Изменить"}
-                    </button>
+                    {isChange && (
+                        <button 
+                            onClick={isEditing ? handleSave : () => setIsEditing(true)} 
+                            type="button"
+                            className={isEditing ? "btn-primary" : "btn-outline"}
+                        >
+                            {isEditing ? "Сохранить" : "Изменить"}
+                        </button>
+                    )}
                 </div>
             </div>
 
             {isEditing ? (
                 <>
-                    <ul className="list-disc list-inside flex flex-col">
+                    <ul className="flex flex-col gap-2">
                         {editedItems.map((item, index) => (
-                            <li key={index} className="flex items-center gap-2">
-                                <span>{item}</span>
+                            <li key={index} className="flex items-center justify-between gap-3 p-3 bg-muted/30 rounded-lg">
+                                <span className="flex-1">{item}</span>
                                 <button
                                     onClick={() => handleDelete(index)}
-                                    className="w-5 h-5 flex items-center justify-center text-lg leading-none"
+                                    className="btn-ghost text-destructive hover:bg-destructive/10 w-8 h-8 p-0 flex items-center justify-center"
                                     type="button"
                                 >
                                     ×
@@ -127,25 +135,25 @@ function EditableList({
                     </ul>
 
                     {isAdding && (
-                        <div className="flex items-center gap-2 mt-2">
+                        <div className="flex items-center gap-2 mt-3">
                             <input
                                 type="text"
                                 value={newItem}
                                 onChange={(e) => setNewItem(e.target.value)}
-                                className="flex-1 border border-gray-300 rounded px-2 py-1"
+                                className="flex-1 h-10 border border-border rounded-lg px-3 bg-background focus:outline-none focus:ring-2 focus:ring-primary/50"
                                 placeholder={inputPlaceholder}
                                 autoFocus
                             />
                             <button
                                 onClick={handleConfirmAdd}
-                                className="w-6 h-6 flex items-center justify-center text-green-600"
+                                className="btn-ghost text-green-600 hover:bg-green-50 w-10 h-10"
                                 type="button"
                             >
                                 ✓
                             </button>
                             <button
                                 onClick={handleCancelAdd}
-                                className="w-6 h-6 flex items-center justify-center text-red-600"
+                                className="btn-ghost text-destructive hover:bg-destructive/10 w-10 h-10"
                                 type="button"
                             >
                                 ×
@@ -154,11 +162,17 @@ function EditableList({
                     )}
                 </>
             ) : (
-                <ul className="list-disc list-inside flex flex-col">
-                    {items?.map((item, index) => (
-                        <li key={index}>{item}</li>
-                    ))}
-                </ul>
+                <>
+                    {items && items.length > 0 ? (
+                        <ul className="flex flex-col gap-2">
+                            {items.map((item, index) => (
+                                <li key={index} className="p-3 bg-muted/30 rounded-lg">{item}</li>
+                            ))}
+                        </ul>
+                    ) : (
+                        <p className="text-muted-foreground">Не указано</p>
+                    )}
+                </>
             )}
         </div>
     );
@@ -166,9 +180,70 @@ function EditableList({
 
 
 
-export default function UserInfo({ id }: { id: string }) {
+export default function UserInfo({ id, isChange }: { id: string, isChange: boolean; }) {
     const { user, isLoading, isError, mutate } = useUser(id);
 
+    
+    const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true });
+    const [selectedIndex, setSelectedIndex] = useState(0);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [isUploading, setIsUploading] = useState(false);
+
+    const onSelect = useCallback(() => {
+        if (!emblaApi) return;
+        setSelectedIndex(emblaApi.selectedScrollSnap());
+    }, [emblaApi]);
+
+    useEffect(() => {
+        if (!emblaApi) return;
+        onSelect();
+        emblaApi.on('select', onSelect);
+        emblaApi.on('reInit', onSelect);
+    }, [emblaApi, onSelect]);
+
+    const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const files = event.target.files;
+        if (!files || files.length === 0) return;
+
+        setIsUploading(true);
+        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+        
+        try {
+            const formData = new FormData();
+            for (let i = 0; i < files.length; i++) {
+                formData.append("files", files[i]);
+            }
+            formData.append("params", JSON.stringify({ id }));
+
+            const response = await fetch(`${backendUrl}/user/update`, {
+                method: "PATCH",
+                body: formData,
+            });
+
+            if (!response.ok) {
+                toast.error("Ошибка при загрузке фотографий");
+                return;
+            }
+
+            await mutate();
+            toast.success("Фотографии успешно загружены");
+            
+            // Сброс файлового input
+            if (fileInputRef.current) {
+                fileInputRef.current.value = "";
+            }
+        } catch (error) {
+            console.error("Ошибка при загрузке фотографий:", error);
+            toast.error("Не удалось загрузить фотографии");
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
+    const handleUploadClick = () => {
+        fileInputRef.current?.click();
+    };
+    
     if (isLoading) {
         return (
             <div className="flex items-center justify-center w-full h-full">
@@ -199,87 +274,167 @@ export default function UserInfo({ id }: { id: string }) {
             </div>
         );
     }
-
     const userData = user as User;
     const fullName = `${userData.surname || ""} ${userData.name || ""} ${userData.middlename || ""}`.trim();
+    
+    const images = userData.images && userData.images.length > 0 ? userData.images : ["/user-placeholder.jpg"];
+    
+
     return (
-        <div className="flex flex-col w-full h-full">
-            <div className="w-full relative bg-gray-300" style={{ aspectRatio: "16/9" }}>
-                <Image
-                    src={userData.avatar || "/my-photo.jpg"}
-                    alt={fullName}
-                    fill
-                    className="object-contain"
-                    priority
-                />
+        <div className="flex flex-col w-full min-h-screen">
+            <div className="w-full relative h-64 sm:h-80 bg-muted" style={{ aspectRatio: "16/9" }}>
+                <div className="w-full h-full" ref={emblaRef}>
+                    <div className="flex h-full">
+                        {images.map((image, index) => (
+                            <div key={index} className="flex-[0_0_100%] min-w-0 relative">
+                                <Image
+                                    src={image}
+                                    alt={`${fullName} - фото ${index + 1}`}
+                                    fill
+                                    className="object-contain"
+                                    priority={index === 0}
+                                />
+                            </div>
+                        ))}
+                    </div>
+                </div>
+                {images.length > 1 && (
+                    <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2 z-10">
+                        {images.map((_, index) => (
+                            <button
+                                key={index}
+                                className={`w-2.5 h-2.5 rounded-full transition-all ${
+                                    index === selectedIndex ? 'bg-primary' : 'bg-primary/30'
+                                }`}
+                                aria-label={`Перейти к фото ${index + 1}`}
+                            />
+                        ))}
+                    </div>
+                )}
+                {isChange && (
+                    <div className="absolute top-4 right-4 z-10">
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            onChange={handleFileChange}
+                            className="hidden"
+                            disabled={isUploading}
+                        />
+                        <button
+                            onClick={handleUploadClick}
+                            disabled={isUploading}
+                            className="btn-primary"
+                            type="button"
+                        >
+                            {isUploading ? "Загрузка..." : "Загрузить фото"}
+                        </button>
+                    </div>
+                )}
             </div>
 
-            <div className="w-full flex flex-col items-start gap-4 px-4 pb-4">
-                <div className="w-full">
-                    <h1 className="text-xl font-semibold">{fullName || "Не указано"}</h1>
-                </div>
-
-                {userData.birthDate && (
-                    <div className="w-full">
-                        <p className="text-base">Дата рождения: {userData.birthDate}</p>
+            <div className="page-container">
+                <div className="content-max-width">
+                    <div className="mb-6">
+                        <h1 className="mb-2">{fullName || "Не указано"}</h1>
                     </div>
-                )}
-
-                {userData.livePosition && (
-                    <div className="w-full">
-                        <p className="text-base">{userData.livePosition}</p>
-                    </div>
-                )}
-
-                <EditableList
-                    title="Хобби"
-                    items={userData.hobbies}
-                    userId={id}
-                    fieldKey="hobbies"
-                    mutate={mutate}
-                    inputPlaceholder="Название хобби"
-                    successMessage="Хобби успешно сохранены"
-                />
-
-                <EditableList
-                    title="Специализации"
-                    items={userData.specializations}
-                    userId={id}
-                    fieldKey="specializations"
-                    mutate={mutate}
-                    inputPlaceholder="Название специализации"
-                    successMessage="Специализации успешно сохранены"
-                />
-
-                <EditableList
-                    title="Достижения"
-                    items={userData.achievements}
-                    userId={id}
-                    fieldKey="achievements"
-                    mutate={mutate}
-                    inputPlaceholder="Название достижения"
-                    successMessage="Достижения успешно сохранены"
-                />
-
-                <div className="w-full flex flex-col gap-2">
-                    <h2 className="text-2xl font-bold">Воспоминания</h2>
-                    {userData.memories?.map((memory: Memory, idx: number) => 
-                        <div key={idx} className="flex flex-col gap-2 border border-black">
-                            <Image
-                                src={memory?.images?.[0] || '/my-photo.jpg'}
-                                width={600}
-                                height={600}
-                                alt={memory?.title || 'Memory image'}
-                                className="h-40 object-contain"
-                            />
-                            <p className="h-6 text-lg font-semibold">{memory?.title}</p>
-                            <p className="line-clamp-2">{memory.text}</p>
-                            <div className="flex flex-wrap justify-between">
-                                <Link href={`/profile/${memory.creator.id}`}><span className="underline font-semibold">Автор:</span> {memory.creator.name}</Link>
-                                <p><span className="underline font-semibold">О ком:</span> {userData.name}{memory.relatives.length > 1? ` и еще ${memory.relatives.length - 1}`: ""}</p>
-                            </div>
+                    
+                    <div className="flex flex-col gap-4 mb-8">
+                        <div>
+                            <p className="text-label">Дата рождения</p>
+                            <p className="text-base">{userData.birthDate || "не указано"}</p>
                         </div>
-                    )}
+                        <div>
+                            <p className="text-label">Жизненная позиция</p>
+                            <p className="text-base">{userData.livePosition || "Не указано"}</p>
+                        </div>
+                    </div>
+
+                    <div className="section-spacing">
+                        <EditableList
+                            title="Хобби"
+                            items={userData.hobbies}
+                            userId={id}
+                            fieldKey="hobbies"
+                            mutate={mutate}
+                            inputPlaceholder="Название хобби"
+                            successMessage="Хобби успешно сохранены"
+                            isChange={isChange}
+                        />
+                    </div>
+
+                    <div className="section-spacing">
+                        <EditableList
+                            title="Специализации"
+                            items={userData.specializations}
+                            userId={id}
+                            fieldKey="specializations"
+                            mutate={mutate}
+                            inputPlaceholder="Название специализации"
+                            successMessage="Специализации успешно сохранены"
+                            isChange={isChange}
+                        />
+                    </div>
+
+                    <div className="section-spacing">
+                        <EditableList
+                            title="Достижения"
+                            items={userData.achievements}
+                            userId={id}
+                            fieldKey="achievements"
+                            mutate={mutate}
+                            inputPlaceholder="Название достижения"
+                            successMessage="Достижения успешно сохранены"
+                            isChange={isChange}
+                        />
+                    </div>
+
+                    <div className="section-spacing">
+                        <h2 className="mb-4">Воспоминания</h2>
+                        {!!userData.memories && userData.memories.length === 0 && (
+                            <div className="w-full h-40 flex border border-border rounded-lg items-center justify-center bg-muted/30">
+                                <p className="text-muted-foreground">Здесь будут воспоминания о {isChange? "вас": user.name}</p>
+                            </div>
+                        )}
+                        <div className="grid gap-4 sm:grid-cols-2">
+                            {userData.memories?.map((memory: Memory, idx: number) => 
+                                <div key={idx} className="card flex flex-col gap-3">
+                                    {memory?.images?.[0] && (
+                                        <div className="relative w-full h-48 bg-muted rounded-lg overflow-hidden">
+                                            <Image
+                                                src={memory.images[0]}
+                                                alt={memory?.title || 'Memory image'}
+                                                fill
+                                                className="object-cover"
+                                            />
+                                        </div>
+                                    )}
+                                    <h3 className="text-lg font-semibold">{memory?.title}</h3>
+                                    <p className="text-sm text-muted-foreground line-clamp-3">{memory.text}</p>
+                                    <div className="flex flex-col gap-2 pt-2 border-t border-border">
+                                        <Link 
+                                            href={`/profile/${memory.creator.id}`}
+                                            className="text-sm hover:text-primary transition-colors"
+                                        >
+                                            <span className="font-semibold">Автор:</span> {memory.creator.name}
+                                        </Link>
+                                        <p className="text-sm text-muted-foreground">
+                                            <span className="font-semibold">О ком:</span> {userData.name}{memory.relatives.length > 1? ` и еще ${memory.relatives.length - 1}`: ""}
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                        {isChange && (
+                            <Link 
+                                href="/add-memory" 
+                                className="btn-primary inline-block mt-4 w-full sm:w-auto"
+                            >
+                                Добавить воспоминание
+                            </Link>
+                        )}
+                    </div>
                 </div>
             </div>
         </div>

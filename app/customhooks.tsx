@@ -27,7 +27,7 @@ const fetcher = async (url: string, options?: RequestInit) => {
 // Хук для получения данных о пользователе
 export const useUser = (userId: string) => {
   const { data, error, isLoading, mutate } = useSWR(
-    `/user/find/${userId}`,
+    userId ? `/user/find/${userId}` : null,
     fetcher,
     {
       revalidateOnFocus: false,

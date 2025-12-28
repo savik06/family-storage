@@ -3,7 +3,7 @@ export type User = {
     name: string;
     surname: string;
     middlename: string;
-    avatar?: string;
+    images: string[];
     birthDate: string;
     livePosition: string;
     hobbies: string[];

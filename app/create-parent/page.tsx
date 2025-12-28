@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useUsers } from "../customhooks";
 import { User } from "@/components/types";
@@ -25,6 +25,21 @@ export default function CreateParentPage() {
     parentsId: [],
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [images, setImages] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const addImages = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const list = e.target.files;
+    if (!list) return;
+    for (const file of list) {
+      if (!file.type.startsWith("image/")) {
+        toast.error("Допустимы только изображения");
+        e.target.value = ""; // Сброс input при ошибке
+        return;
+      }
+    }
+    setImages(Array.from(list));
+  }
 
   const handleChange =
     <K extends keyof FormState>(field: K) =>
@@ -37,13 +52,18 @@ export default function CreateParentPage() {
     setIsSubmitting(true);
 
     try {
+      const userData = new FormData();
+      for (const file of images) {
+        userData.append("files", file);
+      }
+
+      userData.append("params", JSON.stringify(
+        formData
+      ));
+
       const response = await fetch(`${backendUrl}/user/create`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...formData,
-          parentsId: formData.parentsId,
-        }),
+        body: userData,
       });
 
       if (!response.ok) {
@@ -60,6 +80,11 @@ export default function CreateParentPage() {
         birthDate: "",
         parentsId: [],
       });
+      setImages([]);
+      // Сброс файлового input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
     } catch (error) {
       console.error("Ошибка при создании родственника:", error);
       toast.error("Произошла ошибка при сохранении");
@@ -69,16 +94,16 @@ export default function CreateParentPage() {
   };
 
   return (
-    <div className="max-w-xl w-full mx-auto p-4 flex flex-col gap-6">
-        
-      <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-semibold">Добавить родственника</h1>
-        <p className="text-sm text-gray-600">
-          Заполните поля ниже, чтобы добавить нового родственника в дерево.
-        </p>
-      </div>
+    <div className="page-container">
+      <div className="content-max-width">
+        <div className="mb-8">
+          <h1 className="mb-3">Добавить родственника</h1>
+          <p className="text-description">
+            Заполните поля ниже, чтобы добавить нового родственника в дерево.
+          </p>
+        </div>
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-6">
         <Field
           label="Фамилия"
           value={formData.surname}
@@ -116,14 +141,27 @@ export default function CreateParentPage() {
           onChange={handleChange("parentsId")}
         />
 
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="h-11 rounded-md bg-black text-white disabled:opacity-60 disabled:cursor-not-allowed"
-        >
-          {isSubmitting ? "Сохранение..." : "Сохранить"}
-        </button>
-      </form>
+        <div className="flex flex-col gap-2">
+          <label className="text-label">Загрузите изображения:</label>
+          <input 
+            ref={fileInputRef}
+            type="file" 
+            accept="image/*" 
+            multiple 
+            onChange={addImages}
+            className="px-4 py-2 border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/50"
+          />
+        </div>
+
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="btn-primary w-full sm:w-auto"
+          >
+            {isSubmitting ? "Сохранение..." : "Сохранить родственника"}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }
@@ -138,14 +176,14 @@ type FieldProps = {
 
 function Field({ label, value, onChange, placeholder, required }: FieldProps) {
   return (
-    <label className="flex flex-col gap-1">
-      <span className="text-sm text-gray-800">{label}{required ? " *" : ""}</span>
+    <label className="flex flex-col gap-2">
+      <span className="text-label">{label}{required ? " *" : ""}</span>
       <input
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
         required={required}
-        className="h-10 rounded-md border border-gray-300 px-3 focus:outline-none focus:ring-2 focus:ring-black/60"
+        className="h-11 border border-border px-4 focus:outline-none focus:ring-2 focus:ring-primary/50 bg-background"
       />
     </label>
   );
@@ -174,19 +212,23 @@ function ParentsSelector({ users = [], selectedIds, onChange }: ParentsSelectorP
 
   return (
     <div className="flex flex-col gap-2">
-      <span className="text-sm text-gray-800">Родители</span>
-      <div className="max-h-48 overflow-y-auto border border-gray-200 rounded-md divide-y">
+      <span className="text-label">Родители</span>
+      <div className="max-h-48 overflow-y-auto border-2 border-border divide-y bg-card">
         {options.length === 0 && (
-          <div className="p-3 text-sm text-gray-500">Нет данных о родителях</div>
+          <div className="p-4 text-sm text-muted-foreground text-center">Нет данных о родителях</div>
         )}
         {options.map((option) => (
-          <label key={option.id} className="flex items-center gap-2 px-3 py-2">
+          <label 
+            key={option.id} 
+            className="flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors cursor-pointer"
+          >
             <input
               type="checkbox"
               checked={selectedIds.includes(option.id)}
               onChange={() => toggle(option.id)}
+              className="w-4 h-4 rounded border-border text-primary focus:ring-2 focus:ring-primary/50"
             />
-            <span className="text-sm">{option.label}</span>
+            <span className="text-sm font-medium">{option.label}</span>
           </label>
         ))}
       </div>

@@ -3,36 +3,58 @@
 import { FormEvent, useMemo, useState } from "react";
 import { useUsers } from "../customhooks";
 import { toast } from "sonner";
-import { ChartBarStackedIcon } from "lucide-react";
 import { User } from "@/components/types";
 
-export default function AddMemory() {
+export default function AddMemoryTool() {
     const { users } = useUsers();
     const [ title, setTitle ] = useState<string>("");
     const [ text, setText ] = useState<string>("");
     const [ relativesId, setRelativesId ] = useState<string[]>([]);
     const [ creatorId, setCreatorId ] = useState<string>("");
     const [ isSubmitting, setIsSubmitting ] = useState(false);
+    const [ images, setImages ] = useState<File[]>([]);
+
+    const addImages = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const list = e.target.files;
+      if (!list) return;
+      for (const file of list) {
+        if (!file.type.startsWith("image/")) {
+          toast.error("Допустимы только изображения");
+          return;
+        }
+      }
+      setImages(Array.from(list));
+    }
 
     const handleSubmit = async(event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         setIsSubmitting(true);
 
+        const memoryData = new FormData();
+        for (const file of images) {
+            memoryData.append("files", file);
+        }
+
+        memoryData.append("params", JSON.stringify({
+          title,
+          text,
+          relativesId,
+          creatorId
+        }));
+
         if (relativesId.length === 0) {
-            toast.error("Введите все поля");
+            toast.error("Заполните все поля");
+            setIsSubmitting(false);
+            return;
         }
         try {
-            await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/memory/create`, {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/memory/create`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                        title,
-                        text,
-                        relativesId,
-                        creatorId
-                })
-                
+                body: memoryData
             });
+            if (!res.ok) {
+              toast.error(res.text);
+            }
         } catch (error: any) {
             toast.error("Ошибка при добавлении:", error.message)
         } finally {
@@ -41,20 +63,22 @@ export default function AddMemory() {
             setText("");
             setRelativesId([]);
             setCreatorId("");
+            setImages([]);
             setIsSubmitting(false);
         }
         
     }
 
     return (
-        <div className="flex flex-col gap-4 p-5">
-            <div className="flex flex-col gap-2">
-                <h1 className="text-2xl font-semibold">Добавить воспоминание</h1>
-                <p className="text-sm text-gray-600">
-                Заполните поля ниже, чтобы добавить новое воспоминание.
-                </p>
-            </div>
-            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <div className="page-container">
+            <div className="content-max-width">
+                <div className="mb-8">
+                    <h1 className="mb-3">Добавить воспоминание</h1>
+                    <p className="text-description">
+                        Заполните поля ниже, чтобы добавить новое воспоминание.
+                    </p>
+                </div>
+                <form onSubmit={handleSubmit} className="flex flex-col gap-6">
                 <Field 
                     label="Заголовок"
                     value={title}
@@ -80,15 +104,27 @@ export default function AddMemory() {
                     creatorId={creatorId}
                     onChange={setCreatorId}
                 />
-                
-                <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="h-11 rounded-md bg-black text-white disabled:opacity-60 disabled:cursor-not-allowed"
-                >
-                    {isSubmitting ? "Сохранение..." : "Сохранить"}
-                </button>
-            </form>
+
+                    <div className="flex flex-col gap-2">
+                        <label className="text-label">Загрузите изображения:</label>
+                        <input 
+                            type="file" 
+                            accept="image/*" 
+                            multiple 
+                            onChange={addImages}
+                            className="px-4 py-2 border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/50"
+                        />
+                    </div>
+                    
+                    <button
+                        type="submit"
+                        disabled={isSubmitting}
+                        className="btn-primary w-full sm:w-auto"
+                    >
+                        {isSubmitting ? "Сохранение..." : "Сохранить воспоминание"}
+                    </button>
+                </form>
+            </div>
         </div>
     )
 
@@ -105,14 +141,14 @@ type FieldProps = {
   
 function Field({ label, value, onChange, placeholder, required }: FieldProps) {
     return (
-      <label className="flex flex-col gap-1">
-        <span className="text-sm text-gray-800">{label}{required ? " *" : ""}</span>
+      <label className="flex flex-col gap-2">
+        <span className="text-label">{label}{required ? " *" : ""}</span>
         <input
           value={value}
           onChange={(event) => onChange(event.target.value)}
           placeholder={placeholder}
           required={required}
-          className="h-10 rounded-md border border-gray-300 px-3 focus:outline-none focus:ring-2 focus:ring-black/60"
+          className="h-11 border border-border px-4 focus:outline-none focus:ring-2 focus:ring-primary/50 bg-background"
         />
       </label>
     );
@@ -141,19 +177,23 @@ function ParentsSelector({ users = [], selectedIds, onChange }: ParentsSelectorP
   
     return (
       <div className="flex flex-col gap-2">
-        <span className="text-sm text-gray-800">Относящиеся родственники</span>
-        <div className="max-h-48 overflow-y-auto border border-gray-200 rounded-md divide-y">
+        <span className="text-label">О ком: *</span>
+        <div className="max-h-48 overflow-y-auto border-2 border-border divide-y bg-card">
           {options.length === 0 && (
-            <div className="p-3 text-sm text-gray-500">Нет данных о родственниках</div>
+            <div className="p-4 text-sm text-muted-foreground text-center">Нет данных о родственниках</div>
           )}
           {options.map((option) => (
-            <label key={option.id} className="flex items-center gap-2 px-3 py-2">
+            <label 
+              key={option.id} 
+              className="flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors cursor-pointer"
+            >
               <input
                 type="checkbox"
                 checked={selectedIds.includes(option.id)}
                 onChange={() => toggle(option.id)}
+                className="w-4 h-4 rounded border-border text-primary focus:ring-2 focus:ring-primary/50"
               />
-              <span className="text-sm">{option.label}</span>
+              <span className="text-sm font-medium">{option.label}</span>
             </label>
           ))}
         </div>
@@ -176,19 +216,23 @@ function CreatorSelector({ users = [], creatorId, onChange}: CreatorSelectorProp
 
     return (
         <div className="flex flex-col gap-2">
-        <span className="text-sm text-gray-800">Создатель воспоминания</span>
-        <div className="max-h-48 overflow-y-auto border border-gray-200 rounded-md divide-y">
+        <span className="text-label">Создатель воспоминания</span>
+        <div className="max-h-48 overflow-y-auto border-2 border-border divide-y bg-card">
           {options.length === 0 && (
-            <div className="p-3 text-sm text-gray-500">Нет данных о родственниках</div>
+            <div className="p-4 text-sm text-muted-foreground text-center">Нет данных о родственниках</div>
           )}
           {options.map((option) => (
-            <label key={option.id} className="flex items-center gap-2 px-3 py-2">
+            <label 
+              key={option.id} 
+              className="flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors cursor-pointer"
+            >
               <input
                 type="checkbox"
                 checked={creatorId === option.id}
                 onChange={() => onChange(option.id)}
+                className="w-4 h-4 rounded border-border text-primary focus:ring-2 focus:ring-primary/50"
               />
-              <span className="text-sm">{option.label}</span>
+              <span className="text-sm font-medium">{option.label}</span>
             </label>
           ))}
         </div>

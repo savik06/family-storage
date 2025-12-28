@@ -1,6 +1,7 @@
 import { User, Memory } from "./types";
 import Image from "next/image";
 import Link from "next/link";
+import { useState } from "react";
 
 type MemoriesInfoProps = {
     users: User[];
@@ -8,6 +9,9 @@ type MemoriesInfoProps = {
 }
 
 export function MemoriesInfo({ users, allMemories }: MemoriesInfoProps) {
+    const [imageErrors, setImageErrors] = useState<Set<string>>(new Set());
+    const placeholderImage = "https://family-storage.storage.yandexcloud.net/images/memory-placeholder.jpg";
+    
     // Фильтруем воспоминания: оставляем только те, где в relatives есть все пользователи из users
     const filteredMemories = allMemories?.filter((memory: Memory) => {
         return users.every((user: User) => 
@@ -17,6 +21,10 @@ export function MemoriesInfo({ users, allMemories }: MemoriesInfoProps) {
     console.log(users, allMemories, filteredMemories);
 
     const userIds = users.map(user => user.id);
+    
+    const handleImageError = (memoryId: string) => {
+        setImageErrors(prev => new Set(prev).add(memoryId));
+    };
 
     return (
         <div className="h-full w-full flex flex-col p-4 overflow-y-auto">
@@ -28,14 +36,20 @@ export function MemoriesInfo({ users, allMemories }: MemoriesInfoProps) {
                 ))}
             </div>
             <div className="flex flex-col gap-2">
-                {filteredMemories.map((memory: Memory) => (
+                {filteredMemories.map((memory: Memory) => {
+                    const imageSrc = (memory?.images?.[0] && !imageErrors.has(memory.id)) 
+                        ? memory.images[0] 
+                        : placeholderImage;
+                    return (
                     <div key={memory.id} className="flex flex-col gap-2 border border-black p-4">
                         <Image
-                            src={memory?.images?.[0] || '/my-photo.jpg'}
+                            src={imageSrc}
                             width={600}
                             height={600}
                             alt={memory?.title || 'Memory image'}
                             className="h-40 object-contain"
+                            onError={() => handleImageError(memory.id)}
+                            unoptimized={imageSrc === placeholderImage}
                         />
                         <p className="h-6 text-lg font-semibold">{memory?.title}</p>
                         <p className="line-clamp-2">{memory.text}</p>
@@ -52,7 +66,8 @@ export function MemoriesInfo({ users, allMemories }: MemoriesInfoProps) {
                             </p>
                         </div>
                     </div>
-                ))}
+                    );
+                })}
                 {filteredMemories.length === 0 && (
                     <p className="text-gray-500">Воспоминания не найдены</p>
                 )}

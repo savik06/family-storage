@@ -3,6 +3,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import Navbar from "@/components/Navbar";
+import Link from "next/link";
+import Topbar from "@/components/Topbar";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -25,19 +27,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" className="overflow-x-hidden">
       <head>
         <meta name="postimage-verification" content="b96c2868185c864dc5ed16136c86b383" />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} w-screen min-h-screen relative pb-12`}
+        className={`${geistSans.variable} ${geistMono.variable} w-full min-h-screen relative overflow-x-hidden`}
       >
-        <div className="w-full h-12 flex flex-row items-center border-b border-gray-300">
-          <h1 className="w-full text-center text-2xl font-bold">Family Storage</h1>
-        </div>
+        <Topbar />
         {children}
         <Toaster richColors position="top-center" duration={2000} />
-        <Navbar />
       </body>
     </html>
   );
