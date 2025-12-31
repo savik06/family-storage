@@ -6,9 +6,10 @@ import { useState } from "react";
 type MemoriesInfoProps = {
     users: User[];
     allMemories: Memory[];
+    onMemoryClick?: (memory: Memory) => void;
 }
 
-export function MemoriesInfo({ users, allMemories }: MemoriesInfoProps) {
+export function MemoriesInfo({ users, allMemories, onMemoryClick }: MemoriesInfoProps) {
     const [imageErrors, setImageErrors] = useState<Set<string>>(new Set());
     const placeholderImage = "https://family-storage.storage.yandexcloud.net/images/memory-placeholder.jpg";
     
@@ -26,6 +27,12 @@ export function MemoriesInfo({ users, allMemories }: MemoriesInfoProps) {
         setImageErrors(prev => new Set(prev).add(memoryId));
     };
 
+    const handleMemoryClick = (memory: Memory) => {
+        if (onMemoryClick) {
+            onMemoryClick(memory);
+        }
+    };
+
     return (
         <div className="h-full w-full flex flex-col p-4 overflow-y-auto">
             <h2 className="text-2xl font-bold mb-4">Воспоминания</h2>
@@ -35,13 +42,17 @@ export function MemoriesInfo({ users, allMemories }: MemoriesInfoProps) {
                     <p key={user.id}>{user.name}{idx < users.length - 1 ? ", " : ""}</p>
                 ))}
             </div>
-            <div className="flex flex-col gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
                 {filteredMemories.map((memory: Memory) => {
                     const imageSrc = (memory?.images?.[0] && !imageErrors.has(memory.id)) 
                         ? memory.images[0] 
                         : placeholderImage;
                     return (
-                    <div key={memory.id} className="flex flex-col gap-2 border border-black p-4">
+                    <div 
+                        key={memory.id} 
+                        className="flex flex-col gap-2 border border-black p-4 cursor-pointer hover:bg-muted/30 transition-colors"
+                        onClick={() => handleMemoryClick(memory)}
+                    >
                         <Image
                             src={imageSrc}
                             width={600}
@@ -51,10 +62,13 @@ export function MemoriesInfo({ users, allMemories }: MemoriesInfoProps) {
                             onError={() => handleImageError(memory.id)}
                             unoptimized={imageSrc === placeholderImage}
                         />
-                        <p className="h-6 text-lg font-semibold">{memory?.title}</p>
+                        <p className="h-6 text-lg font-semibold line-clamp-1">{memory?.title}</p>
                         <p className="line-clamp-2">{memory.text}</p>
                         <div className="flex flex-wrap justify-between">
-                            <Link href={`/profile/${memory.creator.id}`}>
+                            <Link 
+                                href={`/profile/${memory.creator.id}`}
+                                onClick={(e) => e.stopPropagation()}
+                            >
                                 <span className="underline font-semibold">Автор:</span> {memory.creator.name}
                             </Link>
                             <p>

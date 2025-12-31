@@ -136,7 +136,15 @@ export default function FamilyTree({ onNodeClick, isBorder = false }: { onNodeCl
 
     return (
         <div className="w-full h-[60vh]">
-            <ReactFlow nodes={nodes} nodeTypes={nodeTypes} edges={edges} fitView>
+            <ReactFlow
+                panOnDrag={true}
+                zoomOnPinch={true}
+                nodesDraggable={false}
+                nodes={nodes} 
+                nodeTypes={nodeTypes} 
+                edges={edges} 
+                fitView
+            >
                 <Background />
                 <Controls />
             </ReactFlow>

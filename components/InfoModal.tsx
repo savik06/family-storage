@@ -38,7 +38,7 @@ export default function InfoModal({ isOpen, close, children }: InfoModalProps) {
     return (
         <>
             <div 
-                className={`h-[75vh] absolute bottom-0 left-0 right-0 w-full z-30 border-t-2 border-border bg-card transition-transform duration-300 ease-out ${
+                className={`h-[75vh] sm:h-[80vh] md:h-[85vh] fixed bottom-0 left-0 right-0 overflow-y-scroll scrollbar-hidden w-full z-30 border-t-2 border-border bg-card transition-transform duration-400 ease-out ${
                     isAnimating ? 'translate-y-0' : 'translate-y-full'
                 }`}
             >

@@ -2,11 +2,12 @@
 
 import FamilyTree from "@/components/FamilyTree";
 import { useMemories, useUsers } from "../customhooks";
-import { User } from "@/components/types";
+import { User, Memory } from "@/components/types";
 import { useState, useEffect } from "react";
 import { MemoriesInfo } from "@/components/Memory";
 import InfoModal from "@/components/InfoModal";
 import Navbar from "@/components/Navbar";
+import MemoryDetail from "@/components/MemoryDetail";
 
 type ChosenRelative = {
     relative: User;
@@ -19,6 +20,8 @@ export default function Memories() {
     const [ chosenRelatives, setChosenRelatives ] = useState<ChosenRelative[]>(users);
     const [ chosenAmount, setChosenAmount ] = useState(0);
     const [ isMemoriesOpen, setIsMemoriesOpen ] = useState(false);
+    const [ selectedMemory, setSelectedMemory ] = useState<Memory | null>(null);
+    const [ isMemoryDetailOpen, setIsMemoryDetailOpen ] = useState(false);
 
     useEffect(() => {
         if (!isLoading) {
@@ -37,6 +40,18 @@ export default function Memories() {
         }));
     }
 
+    const handleMemoryClick = (memory: Memory) => {
+        setSelectedMemory(memory);
+        setIsMemoryDetailOpen(true);
+        setIsMemoriesOpen(false);
+    }
+
+    const handleCloseMemoryDetail = () => {
+        setIsMemoryDetailOpen(false);
+        setIsMemoriesOpen(true);
+        setSelectedMemory(null);
+    }
+
     return (
         <div className="relative page-container">
             <div className="content-max-width mb-8">
@@ -47,9 +62,18 @@ export default function Memories() {
             </div>
             <FamilyTree onNodeClick={handleClick} isBorder={true} />
             <InfoModal isOpen={isMemoriesOpen} close={() => setIsMemoriesOpen(prev => !prev)}>
-                <MemoriesInfo users={chosenRelatives?.reduce((a: User[], r) => r.isChosen ? [...a, r.relative]: a, [])} allMemories={memories}/>
-            </InfoModal> 
-            {chosenAmount > 0 && !isMemoriesOpen && (
+                <MemoriesInfo 
+                    users={chosenRelatives?.reduce((a: User[], r) => r.isChosen ? [...a, r.relative]: a, [])} 
+                    allMemories={memories}
+                    onMemoryClick={handleMemoryClick}
+                />
+            </InfoModal>
+            {selectedMemory && (
+                <InfoModal isOpen={isMemoryDetailOpen} close={handleCloseMemoryDetail}>
+                    <MemoryDetail memory={selectedMemory} />
+                </InfoModal>
+            )}
+            {chosenAmount > 0 && !isMemoriesOpen && !isMemoryDetailOpen && (
                 <button 
                     onClick={() => setIsMemoriesOpen(prev => !prev)} 
                     className="btn-primary fixed left-1/2 -translate-x-1/2 bottom-32 sm:bottom-3 z-40"
@@ -57,7 +81,7 @@ export default function Memories() {
                     Показать воспоминания
                 </button>
             )}
-            {!isMemoriesOpen && <Navbar />}
+            {!isMemoriesOpen && !isMemoryDetailOpen && <Navbar />}
         </div>
     )
 

@@ -7,6 +7,9 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { toast } from "sonner";
 import Link from "next/link";
 import useEmblaCarousel from 'embla-carousel-react';
+import { ArrowLeftIcon, ChevronLeft, ChevronRight } from "lucide-react";
+import MemoryDetail from "./MemoryDetail";
+import InfoModal from "./InfoModal";
 
 type EditableKey = "hobbies" | "specializations" | "achievements";
 
@@ -180,11 +183,37 @@ function EditableList({
 
 
 
-export default function UserInfo({ id, isChange }: { id: string, isChange: boolean; }) {
+export default function UserInfo({ id, isChange, memoryClick }: { id: string, isChange: boolean; memoryClick?: (memory: Memory) => void; }) {
     const { user, isLoading, isError, mutate } = useUser(id);
+    const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+    const [selectedMemory, setSelectedMemory] = useState<Memory | null>(null);
+    const [isMemoryModalOpen, setIsMemoryModalOpen] = useState(false);
 
-    
-    const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true });
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const savedUserId = localStorage.getItem('userId');
+            setCurrentUserId(savedUserId);
+        }
+    }, []);
+
+    // Редактирование доступно только если id совпадает с userId из localStorage И isChange === true
+    const canEdit = isChange && currentUserId === id;
+
+    const handleMemoryClick = (memory: Memory) => {
+        setSelectedMemory(memory);
+        setIsMemoryModalOpen(true);
+    };
+
+    const closeMemoryModal = () => {
+        setIsMemoryModalOpen(false);
+        setSelectedMemory(null);
+    };
+
+    const [emblaRef, emblaApi] = useEmblaCarousel({ 
+        loop: true,
+        containScroll: 'trimSnaps',
+        dragFree: false
+    });
     const [selectedIndex, setSelectedIndex] = useState(0);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [isUploading, setIsUploading] = useState(false);
@@ -200,6 +229,14 @@ export default function UserInfo({ id, isChange }: { id: string, isChange: boole
         emblaApi.on('select', onSelect);
         emblaApi.on('reInit', onSelect);
     }, [emblaApi, onSelect]);
+
+    const scrollPrev = useCallback(() => {
+        if (emblaApi) emblaApi.scrollPrev();
+    }, [emblaApi]);
+
+    const scrollNext = useCallback(() => {
+        if (emblaApi) emblaApi.scrollNext();
+    }, [emblaApi]);
 
     const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const files = event.target.files;
@@ -281,9 +318,15 @@ export default function UserInfo({ id, isChange }: { id: string, isChange: boole
     
 
     return (
-        <div className="flex flex-col w-full min-h-screen">
-            <div className="w-full relative h-64 sm:h-80 bg-muted" style={{ aspectRatio: "16/9" }}>
-                <div className="w-full h-full" ref={emblaRef}>
+        <div className="flex flex-col w-full">
+            {isChange && <div className="content-max-width flex flex-row w-full justify-start my-2 sm:mt-4">
+                <Link href="/tree" className="flex flex-row gap-1 items-center btn-outline">
+                    <ArrowLeftIcon className="size-4" />
+                    Главная
+                </Link>
+            </div>}
+            <div className="w-full content-max-width relative h-64 sm:h-80 bg-muted mx-auto" style={{ aspectRatio: "16/9" }}>
+                <div className="w-full h-full overflow-hidden" ref={emblaRef}>
                     <div className="flex h-full">
                         {images.map((image, index) => (
                             <div key={index} className="flex-[0_0_100%] min-w-0 relative">
@@ -299,19 +342,24 @@ export default function UserInfo({ id, isChange }: { id: string, isChange: boole
                     </div>
                 </div>
                 {images.length > 1 && (
-                    <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2 z-10">
-                        {images.map((_, index) => (
-                            <button
-                                key={index}
-                                className={`w-2.5 h-2.5 rounded-full transition-all ${
-                                    index === selectedIndex ? 'bg-primary' : 'bg-primary/30'
-                                }`}
-                                aria-label={`Перейти к фото ${index + 1}`}
-                            />
-                        ))}
-                    </div>
+                    <>
+                        <button
+                            onClick={scrollPrev}
+                            className="absolute left-4 top-1/2 -translate-y-1/2 z-10 bg-background/80 hover:bg-background rounded-full p-2 transition-colors"
+                            aria-label="Предыдущее фото"
+                        >
+                            <ChevronLeft className="size-6" />
+                        </button>
+                        <button
+                            onClick={scrollNext}
+                            className="absolute right-4 top-1/2 -translate-y-1/2 z-10 bg-background/80 hover:bg-background rounded-full p-2 transition-colors"
+                            aria-label="Следующее фото"
+                        >
+                            <ChevronRight className="size-6" />
+                        </button>
+                    </>
                 )}
-                {isChange && (
+                {isChange && canEdit && (
                     <div className="absolute top-4 right-4 z-10">
                         <input
                             ref={fileInputRef}
@@ -360,7 +408,7 @@ export default function UserInfo({ id, isChange }: { id: string, isChange: boole
                             mutate={mutate}
                             inputPlaceholder="Название хобби"
                             successMessage="Хобби успешно сохранены"
-                            isChange={isChange}
+                            isChange={canEdit}
                         />
                     </div>
 
@@ -373,7 +421,7 @@ export default function UserInfo({ id, isChange }: { id: string, isChange: boole
                             mutate={mutate}
                             inputPlaceholder="Название специализации"
                             successMessage="Специализации успешно сохранены"
-                            isChange={isChange}
+                            isChange={canEdit}
                         />
                     </div>
 
@@ -386,20 +434,32 @@ export default function UserInfo({ id, isChange }: { id: string, isChange: boole
                             mutate={mutate}
                             inputPlaceholder="Название достижения"
                             successMessage="Достижения успешно сохранены"
-                            isChange={isChange}
+                            isChange={canEdit}
                         />
                     </div>
 
                     <div className="section-spacing">
-                        <h2 className="mb-4">Воспоминания</h2>
+                        <div className="flex flex-row justify-between mb-4">
+                            <h2>Воспоминания</h2>
+                            {isChange && canEdit && <Link 
+                                href="/add-memory" 
+                                className="btn-outline inline-block sm:w-auto"
+                            >
+                                добавить
+                            </Link>}
+                        </div>
                         {!!userData.memories && userData.memories.length === 0 && (
                             <div className="w-full h-40 flex border border-border rounded-lg items-center justify-center bg-muted/30">
-                                <p className="text-muted-foreground">Здесь будут воспоминания о {isChange? "вас": user.name}</p>
+                                <p className="text-muted-foreground">Здесь будут воспоминания о {canEdit ? "вас" : user.name}</p>
                             </div>
                         )}
                         <div className="grid gap-4 sm:grid-cols-2">
                             {userData.memories?.map((memory: Memory, idx: number) => 
-                                <div key={idx} className="card flex flex-col gap-3">
+                                <div 
+                                    key={idx} 
+                                    className="card flex flex-col gap-3 cursor-pointer hover:opacity-80 transition-opacity"
+                                    onClick={memoryClick? () => memoryClick(memory): () => handleMemoryClick(memory)}
+                                >
                                     {memory?.images?.[0] && (
                                         <div className="relative w-full h-48 bg-muted rounded-lg overflow-hidden">
                                             <Image
@@ -416,6 +476,7 @@ export default function UserInfo({ id, isChange }: { id: string, isChange: boole
                                         <Link 
                                             href={`/profile/${memory.creator.id}`}
                                             className="text-sm hover:text-primary transition-colors"
+                                            onClick={(e) => e.stopPropagation()}
                                         >
                                             <span className="font-semibold">Автор:</span> {memory.creator.name}
                                         </Link>
@@ -426,17 +487,15 @@ export default function UserInfo({ id, isChange }: { id: string, isChange: boole
                                 </div>
                             )}
                         </div>
-                        {isChange && (
-                            <Link 
-                                href="/add-memory" 
-                                className="btn-primary inline-block mt-4 w-full sm:w-auto"
-                            >
-                                Добавить воспоминание
-                            </Link>
-                        )}
                     </div>
                 </div>
             </div>
+            
+            {isChange && selectedMemory && (
+                <InfoModal isOpen={isMemoryModalOpen} close={closeMemoryModal}>
+                    <MemoryDetail memory={selectedMemory} />
+                </InfoModal>
+            )}
         </div>
     );
 }
