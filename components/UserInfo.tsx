@@ -181,6 +181,92 @@ function EditableList({
     );
 }
 
+type EditableFieldProps = {
+    title: string;
+    value?: string | null;
+    userId: string;
+    fieldKey: "livePosition";
+    mutate: () => Promise<any> | void;
+    inputPlaceholder: string;
+    successMessage: string;
+    isChange: boolean;
+  };
+  
+  function EditableField({
+    title,
+    value,
+    userId,
+    fieldKey,
+    mutate,
+    inputPlaceholder,
+    successMessage,
+    isChange,
+  }: EditableFieldProps) {
+    const [isEditing, setIsEditing] = useState(false);
+    const [editedValue, setEditedValue] = useState(value ?? "");
+  
+    useEffect(() => {
+      if (isEditing) setEditedValue(value ?? "");
+      else setEditedValue(value ?? "");
+    }, [isEditing, value]);
+  
+    const handleSave = async () => {
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+  
+      try {
+        const response = await fetch(`${backendUrl}/user/update`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: userId, [fieldKey]: editedValue.trim() }),
+        });
+  
+        if (!response.ok) {
+          toast.error("Ошибка при сохранении данных");
+          return;
+        }
+  
+        await mutate();
+        setIsEditing(false);
+        toast.success(successMessage);
+      } catch (error) {
+        console.error("Ошибка при сохранении данных:", error);
+        toast.error("Не удалось сохранить изменения");
+      }
+    };
+  
+    return (
+      <div className="w-full">
+        <div className="flex items-center justify-between gap-2 mb-2">
+          <p className="text-label">{title}</p>
+  
+          {isChange && (
+            <button
+              onClick={isEditing ? handleSave : () => setIsEditing(true)}
+              type="button"
+              className={isEditing ? "btn-primary" : "btn-outline"}
+            >
+              {isEditing ? "Сохранить" : "Изменить"}
+            </button>
+          )}
+        </div>
+  
+        {isEditing ? (
+          <input
+            type="text"
+            value={editedValue}
+            onChange={(e) => setEditedValue(e.target.value)}
+            className="w-full h-10 border border-border rounded-lg px-3 bg-background focus:outline-none focus:ring-2 focus:ring-primary/50"
+            placeholder={inputPlaceholder}
+            autoFocus
+          />
+        ) : (
+          <p className="text-base">{value?.trim() ? value : "Не указано"}</p>
+        )}
+      </div>
+    );
+  }
+  
+
 
 
 export default function UserInfo({ id, isChange, memoryClick }: { id: string, isChange: boolean; memoryClick?: (memory: Memory) => void; }) {
@@ -393,10 +479,16 @@ export default function UserInfo({ id, isChange, memoryClick }: { id: string, is
                             <p className="text-label">Дата рождения</p>
                             <p className="text-base">{userData.birthDate || "не указано"}</p>
                         </div>
-                        <div>
-                            <p className="text-label">Жизненная позиция</p>
-                            <p className="text-base">{userData.livePosition || "Не указано"}</p>
-                        </div>
+                        <EditableField
+                            title="Жизненная позиция"
+                            value={userData.livePosition}
+                            userId={id}
+                            fieldKey="livePosition"
+                            mutate={mutate}
+                            inputPlaceholder="Введите жизненную позицию"
+                            successMessage="Жизненная позиция успешно сохранена"
+                            isChange={canEdit}
+                        />
                     </div>
 
                     <div className="section-spacing">
