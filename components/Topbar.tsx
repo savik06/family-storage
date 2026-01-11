@@ -28,6 +28,10 @@ export default function Topbar() {
         return (
             <div className="w-full h-16 flex flex-row items-center justify-between container-padding border-b border-border bg-card">
                 <Link href="/tree" className="text-2xl sm:text-3xl font-bold text-primary hover:opacity-80 transition-opacity">WeFamily</Link>
+                <div className="flex flex-row gap-4">
+                    <Link href="/tree" className={clsx("hidden sm:block", currentPage === "/tree" && "font-bold border-b-2")}>Древо</Link>
+                    <Link href="/memories" className={clsx("hidden sm:block", currentPage === "/memories" && "font-bold border-b-2")}>Воспоминания</Link>
+                </div>
                 <div className="flex flex-row items-center gap-3">
                     <div className="h-5 w-24 bg-muted animate-pulse"></div>
                     <div className="size-10 bg-muted animate-pulse border border-border"></div>
